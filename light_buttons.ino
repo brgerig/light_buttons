@@ -28,7 +28,7 @@ int colors[numBtns][2] = {
   {0.136, 0.040}, //blue
   {0.283, 0.108}, //darkviolet
   {0.385, 0.155}, //fuchsia
-}
+};
 
 void (*btnFunctions[numBtns])() {b1Pressed,b2Pressed,b3Pressed,b4Pressed,b5Pressed,b6Pressed,b7Pressed,b8Pressed};
 
@@ -62,7 +62,6 @@ void setup() {
   }
 
   wifi_reconnect();
-  client.setServer(MQTT_SERVER, 1883);
 }
 
 void loop() {
@@ -72,11 +71,12 @@ void loop() {
 
   for(int i=0;i<numBtns;i++) {
     if(btnPressed[i]) {
-      btnPressed[btn] = false;
+      btnPressed[i] = false;
       if(i==0) {
         lightOff();
       } else {
-        setLight(color[i][0],color[i][1]);
+        setLight(colors[i][0],colors[i][1]);
+      }
     }
   }
 }
