@@ -1,6 +1,6 @@
 #include <Arduino.h>
+#include <ESP8266HTTPClient.h>
 #include <ESP8266WiFi.h>
-#include <PubSubClient.h>
 
 #include "config.h"
 
@@ -18,7 +18,18 @@ void ICACHE_RAM_ATTR b8Pressed(){pressButton(7);}
 int btns[numBtns] = {D7,3,D5,D6,D2,D1,D4,D3};
 bool btnPressed[numBtns];
 unsigned long lastPress[numBtns];
-char* colors[numBtns] = {"off","white","red","yellow","green","blue","darkviolet","fuchsia"};
+//char* colors[numBtns] = {"off","white","red","yellow","green","blue","darkviolet","fuchsia"};
+int colors[numBtns][2] = {
+  {0,0},  //off
+  {0.323, 0.329}, //white
+  {0.701, 0.299}, //red
+  {0.444, 0.517}, //yellow
+  {0.172, 0.747}, //green
+  {0.136, 0.040}, //blue
+  {0.283, 0.108}, //darkviolet
+  {0.385, 0.155}, //fuchsia
+}
+
 void (*btnFunctions[numBtns])() {b1Pressed,b2Pressed,b3Pressed,b4Pressed,b5Pressed,b6Pressed,b7Pressed,b8Pressed};
 
 WiFiClient wifiClient;
@@ -40,25 +51,6 @@ void wifi_reconnect() {
   Serial.println(WiFi.localIP());
 }
 
-void mqtt_reconnect() {
-  // Loop until we're reconnected
-  while (!client.connected()) {
-    Serial.print("Attempting MQTT connection...");
-    // Attempt to connect
-    client.setKeepAlive(60);
-    if (client.connect(HOSTNAME,MQTT_USER,MQTT_PASS)) {
-      Serial.println("connected");
-      client.publish(AVAILABILITY_TOPIC, "online");
-    } else {
-      Serial.print("failed, rc=");
-      Serial.print(client.state());
-      Serial.println(" try again in 5 seconds");
-      // Wait 5 seconds before retrying
-      delay(5000);
-    }
-  }
-}
-
 void setup() {
   Serial.begin(9600);
 
@@ -77,22 +69,16 @@ void loop() {
   if(WiFi.status() != WL_CONNECTED) {  
     wifi_reconnect();
   }
-  if(!client.connected()) {
-    mqtt_reconnect();
-  }
 
   for(int i=0;i<numBtns;i++) {
     if(btnPressed[i]) {
-      sendColor(i);
+      btnPressed[btn] = false;
+      if(i==0) {
+        lightOff();
+      } else {
+        setLight(color[i][0],color[i][1]);
     }
   }
-}
-
-void sendColor(int btn) {
-  Serial.print("Color: ");
-  Serial.println(colors[btn]);
-  client.publish(STATE_TOPIC,colors[btn]);
-  btnPressed[btn] = false;
 }
 
 void pressButton(int btn) {
@@ -103,4 +89,47 @@ void pressButton(int btn) {
     btnPressed[btn] = true;
   }
   lastPress[btn] = interrupt_time;
+}
+
+void setLight(int x, int y) {
+  String put_string;
+  put_string = "{\"on\":true,\"bri\":254,\"xy\":[";
+  put_string += x;
+  put_string += ",";
+  put_string += y;
+  put_string += "]}";
+
+  sendCommand(put_string);
+}
+
+void lightOff() {
+  sendCommand("{\"on\":false}");
+}
+
+void sendCommand(String cmd) {
+  HTTPClient http; 
+  String req_string;
+  req_string = "http://";
+  req_string += HUE_IP;
+  req_string += "/api/";
+  req_string += HUE_USER;
+  req_string += "/lights/";
+  req_string += HUE_LIGHT;
+  req_string += "/state";
+  Serial.println(req_string);
+  http.begin(req_string);
+  http.addHeader("Content-Type", "text/plain");
+  
+  Serial.println(cmd);
+  int httpResponseCode = http.PUT(cmd);
+  
+  if(httpResponseCode > 0){
+    String response = http.getString();   
+    Serial.println(httpResponseCode);
+    Serial.println(response);          
+   } else {
+    Serial.print("Error on sending PUT Request: ");
+    Serial.println(httpResponseCode);
+   }
+   http.end();
 }
