@@ -18,8 +18,7 @@ void ICACHE_RAM_ATTR b8Pressed(){pressButton(7);}
 int btns[numBtns] = {D7,3,D5,D6,D2,D1,D4,D3};
 bool btnPressed[numBtns];
 unsigned long lastPress[numBtns];
-//char* colors[numBtns] = {"off","white","red","yellow","green","blue","darkviolet","fuchsia"};
-int colors[numBtns][2] = {
+float colors[numBtns][2] = {
   {0,0},  //off
   {0.323, 0.329}, //white
   {0.701, 0.299}, //red
@@ -33,7 +32,6 @@ int colors[numBtns][2] = {
 void (*btnFunctions[numBtns])() {b1Pressed,b2Pressed,b3Pressed,b4Pressed,b5Pressed,b6Pressed,b7Pressed,b8Pressed};
 
 WiFiClient wifiClient;
-PubSubClient client(wifiClient);
 
 void wifi_reconnect() {
   WiFi.mode(WIFI_STA);
@@ -91,14 +89,9 @@ void pressButton(int btn) {
   lastPress[btn] = interrupt_time;
 }
 
-void setLight(int x, int y) {
-  String put_string;
-  put_string = "{\"on\":true,\"bri\":254,\"xy\":[";
-  put_string += x;
-  put_string += ",";
-  put_string += y;
-  put_string += "]}";
-
+void setLight(float x, float y) {
+  char put_string[40];
+  sprintf(put_string,"{\"on\":true,\"bri\":254,\"xy\":[%.3f,%.3f]}",x,y);
   sendCommand(put_string);
 }
 
@@ -106,7 +99,7 @@ void lightOff() {
   sendCommand("{\"on\":false}");
 }
 
-void sendCommand(String cmd) {
+void sendCommand(char* cmd) {
   HTTPClient http; 
   String req_string;
   req_string = "http://";
@@ -121,6 +114,7 @@ void sendCommand(String cmd) {
   http.addHeader("Content-Type", "text/plain");
   
   Serial.println(cmd);
+  
   int httpResponseCode = http.PUT(cmd);
   
   if(httpResponseCode > 0){
