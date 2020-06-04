@@ -1,0 +1,28 @@
+- id: 'light_buttons'
+  alias: Light buttons
+  description: ''
+  trigger:
+  - platform: mqtt
+    topic: home/name/uniquetopic
+  condition:
+  - condition: template
+    value_template: '{{ trigger.payload != ''off'' }}'
+  action:
+  - data_template:
+      color_name: '{{ trigger.payload }}'
+      brightness: 254
+    entity_id: light.name
+    service: light.turn_on
+- id: 'light_off_button'
+  alias: Light off button
+  description: ''
+  trigger:
+  - payload: 'off'
+    platform: mqtt
+    topic: home/name/uniquetopic
+  condition: []
+  action:
+  - device_id: [light device_id]
+    domain: light
+    entity_id: light.name
+    type: turn_off
